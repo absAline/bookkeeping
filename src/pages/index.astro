@@ -1,0 +1,531 @@
+---
+import '../styles/global.css'
+---
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>💰 智能记账系统 - AI 辅助个人财务管理</title>
+  <meta name="description" content="AI 智能记账系统，自动分类账单、生成收支报告、给出储蓄建议。记录每一笔，看懂你的钱。">
+  <meta property="og:title" content="智能记账系统">
+  <meta property="og:description" content="AI 自动分类 + 收支图表 + 储蓄建议，你的个人财务助手">
+  <meta property="og:type" content="website">
+  <meta name="keywords" content="记账, 财务管理, AI记账, 个人理财, 收支分析">
+  <link rel="canonical" href="https://bookkeeping-absaline.vercel.app/">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="app-header">
+    <h1>💰 智能记账</h1>
+    <p>记录每一笔，看懂你的钱</p>
+  </header>
+
+  <div class="container">
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-tab="overview">概览</button>
+      <button class="tab" data-tab="list">账单</button>
+      <button class="tab" data-tab="charts">图表</button>
+      <button class="tab" data-tab="budget">预算</button>
+      <button class="tab" data-tab="settings">设置</button>
+    </div>
+
+    <!-- Overview -->
+    <div class="tab-content" id="tab-overview">
+      <div class="overview-grid">
+        <div class="card"><div class="card-title">收入</div><div class="card-value income" id="ov-income">0</div></div>
+        <div class="card"><div class="card-title">支出</div><div class="card-value expense" id="ov-expense">0</div></div>
+        <div class="card"><div class="card-title">结余</div><div class="card-value" id="ov-balance">0</div></div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input type="month" id="ov-month" class="filter-month">
+        <button class="btn btn-primary" id="add-btn" style="flex-shrink:0">+ 记一笔</button>
+      </div>
+
+      <div id="budget-alert-container"></div>
+
+      <div class="card">
+        <div class="card-title" style="margin-bottom:8px">📊 本月支出排行</div>
+        <div id="category-stats"></div>
+      </div>
+
+      <div class="ai-box" id="ai-suggestion">
+        <h3>🤖 AI 分析建议</h3>
+        <div id="ai-text-list"></div>
+      </div>
+    </div>
+
+    <!-- List -->
+    <div class="tab-content" id="tab-list" style="display:none">
+      <div class="filter-bar">
+        <input type="month" id="list-month">
+        <select id="list-type"><option value="">全部</option><option value="expense">支出</option><option value="income">收入</option></select>
+        <input type="text" id="list-search" placeholder="搜索备注..." style="max-width:140px">
+      </div>
+      <div class="card" id="tx-list"></div>
+      <button class="btn btn-danger" id="clear-btn" style="width:100%;margin-top:8px">清空本月数据</button>
+    </div>
+
+    <!-- Charts -->
+    <div class="tab-content" id="tab-charts" style="display:none">
+      <div style="margin-bottom:8px"><input type="month" id="chart-month"></div>
+      <div class="card"><div class="card-title" style="margin-bottom:8px">📈 每日收支趋势</div><div class="chart-container"><canvas id="trend-chart"></canvas></div></div>
+      <div class="card"><div class="card-title" style="margin-bottom:8px">🥧 支出分类占比</div><div class="chart-container"><canvas id="pie-chart"></canvas></div></div>
+    </div>
+
+    <!-- Budget -->
+    <div class="tab-content" id="tab-budget" style="display:none">
+      <div style="margin-bottom:8px"><input type="month" id="budget-month"></div>
+      <div class="card" id="budget-progress-card">
+        <div class="card-title" style="margin-bottom:8px">📊 预算执行进度</div>
+        <div id="budget-progress"></div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:14px;margin-bottom:12px">💰 月收入设定</h3>
+        <div style="display:flex;gap:8px">
+          <input type="number" id="income-input" placeholder="月收入 (元)" step="1000" style="flex:1">
+          <button class="btn btn-primary" id="save-income-btn">保存</button>
+        </div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:4px" id="income-status"></div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:14px;margin-bottom:12px">🎯 分类预算设置</h3>
+        <div id="budget-form"></div>
+        <button class="btn btn-primary" id="save-budget-btn" style="margin-top:8px;width:100%">保存预算</button>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="tab-content" id="tab-settings" style="display:none">
+      <div class="card">
+        <h3 style="font-size:14px;margin-bottom:12px">📤 导出数据</h3>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" id="export-json-btn">导出 JSON</button>
+          <button class="btn btn-primary" id="export-csv-btn">导出 CSV</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:14px;margin-bottom:12px">📥 导入数据</h3>
+        <input type="file" id="import-file" accept=".json,.csv" style="margin-bottom:8px">
+        <button class="btn btn-success" id="import-btn">导入</button>
+      </div>
+      <div class="card">
+        <h3 style="font-size:13px;color:var(--text-secondary);line-height:1.7">
+          数据存储在浏览器本地 (localStorage)。导出备份可防止数据丢失。
+        </h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal" id="tx-modal">
+    <div class="modal-content">
+      <h2 id="modal-title">记一笔</h2>
+      <input type="hidden" id="edit-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label>类型</label>
+          <select id="tx-type"><option value="expense">支出</option><option value="income">收入</option></select>
+        </div>
+        <div class="form-group">
+          <label>金额 (元)</label>
+          <input type="number" id="tx-amount" step="0.01" placeholder="0.00" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>分类</label>
+          <select id="tx-category"></select>
+        </div>
+        <div class="form-group">
+          <label>日期</label>
+          <input type="date" id="tx-date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>备注</label>
+        <textarea id="tx-note" placeholder="例如：午餐、地铁充值..." rows="2"></textarea>
+      </div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px" id="auto-category-hint"></div>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="delete-modal-btn" style="display:none">删除</button>
+        <div style="flex:1"></div>
+        <button class="btn" id="cancel-btn" style="background:var(--border)">取消</button>
+        <button class="btn btn-primary" id="save-btn">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      getTransactions, addTransaction, updateTransaction, deleteTransaction,
+      getSummary, getCategorySummary, CATEGORIES, guessCategory,
+      saveTransactions, getBudget, saveBudget, getMonthlyIncome,
+      saveMonthlyIncome, getBudgetStatus, getMonthComparison, generateAISuggestions
+    } from './utils/store.js'
+
+    let chartInstances = {}
+    let editingId = null
+    function $(id) { return document.getElementById(id) }
+    function getCurrentMonth() {
+      const d = new Date()
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+    }
+    function getMonthDays(month) {
+      const [y, m] = month.split('-').map(Number)
+      return new Date(y, m, 0).getDate()
+    }
+
+    function renderOverview() {
+      const month = $('ov-month').value
+      const summary = getSummary(month)
+      $('ov-income').textContent = '¥' + summary.income.toFixed(0)
+      $('ov-expense').textContent = '¥' + summary.expense.toFixed(0)
+      $('ov-balance').textContent = '¥' + summary.balance.toFixed(0)
+      $('ov-balance').style.color = summary.balance >= 0 ? 'var(--success)' : 'var(--danger)'
+
+      const catStats = getCategorySummary(month)
+      const container = $('category-stats')
+      if (catStats.length === 0) {
+        container.innerHTML = '<div class="empty"><p>本月暂无支出</p></div>'
+      } else {
+        const max = catStats[0][1]
+        container.innerHTML = catStats.map(([cat, amt]) => `
+          <div class="stat-row">
+            <span class="stat-label">${cat}</span>
+            <span style="font-weight:600">¥${amt.toFixed(0)}</span>
+          </div>
+          <div class="stat-bar"><div class="stat-bar-fill" style="width:${(amt/max*100).toFixed(0)}%;background:var(--primary)"></div></div>
+        `).join('')
+      }
+
+      renderBudgetAlert(month)
+      renderAISuggestions(month)
+    }
+
+    function renderBudgetAlert(month) {
+      const container = $('budget-alert-container')
+      container.innerHTML = ''
+      const budgetStatus = getBudgetStatus(month)
+      if (!budgetStatus) return
+      const over = Object.entries(budgetStatus.categories).filter(([, v]) => v.ratio > 0.8)
+      if (over.length === 0) return
+      const alerts = over.filter(([, v]) => v.ratio > 1).map(([c, v]) =>
+        `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;margin-bottom:6px;font-size:13px">
+          ⚠️ <strong>${c}</strong> 已超预算 (${v.spent.toFixed(0)} / ${v.limit} 元)
+        </div>`
+      )
+      const warns = over.filter(([, v]) => v.ratio > 0.8 && v.ratio <= 1).map(([c, v]) =>
+        `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;margin-bottom:6px;font-size:13px">
+          ⏳ <strong>${c}</strong> 即将超预算 (${(v.ratio*100).toFixed(0)}%)
+        </div>`
+      )
+      container.innerHTML = [...alerts, ...warns].join('')
+    }
+
+    function renderAISuggestions(month) {
+      const container = $('ai-text-list')
+      const suggestions = generateAISuggestions(month)
+      container.innerHTML = suggestions.map(s => `<p style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin-bottom:4px">• ${s}</p>`).join('')
+    }
+
+    function renderList() {
+      const month = $('list-month').value
+      const type = $('list-type').value
+      const search = $('list-search').value.toLowerCase()
+      let txs = getTransactions().filter(t => t.date.startsWith(month))
+      if (type) txs = txs.filter(t => t.type === type)
+      if (search) txs = txs.filter(t => t.note.toLowerCase().includes(search))
+      txs.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id)
+
+      const container = $('tx-list')
+      if (txs.length === 0) {
+        container.innerHTML = '<div class="empty"><h3>📭 暂无记录</h3><p>点击"记一笔"添加第一笔账单</p></div>'
+        return
+      }
+      container.innerHTML = txs.map(t => `
+        <div class="tx-item" data-id="${t.id}">
+          <div class="tx-icon ${t.type}">${t.type === 'income' ? '📥' : '📤'}</div>
+          <div class="tx-info">
+            <div class="tx-category">${t.category}</div>
+            <div class="tx-note">${t.note || '无备注'}</div>
+            <div class="tx-date">${t.date}</div>
+          </div>
+          <div style="text-align:right">
+            <div class="tx-amount ${t.type}">${t.type === 'income' ? '+' : '-'}¥${t.amount.toFixed(0)}</div>
+          </div>
+          <div class="tx-actions">
+            <button class="btn btn-danger edit-tx-btn" data-id="${t.id}" style="padding:4px 8px;font-size:11px">编辑</button>
+          </div>
+        </div>
+      `).join('')
+      container.querySelectorAll('.edit-tx-btn').forEach(btn => {
+        btn.addEventListener('click', () => openEditModal(Number(btn.dataset.id)))
+      })
+    }
+
+    function renderCharts() {
+      const month = $('chart-month').value
+      const days = getMonthDays(month)
+      const txs = getTransactions().filter(t => t.date.startsWith(month))
+
+      const dailyIncome = Array(days).fill(0)
+      const dailyExpense = Array(days).fill(0)
+      txs.forEach(t => {
+        const day = parseInt(t.date.split('-')[2]) - 1
+        if (t.type === 'income') dailyIncome[day] += t.amount
+        else dailyExpense[day] += t.amount
+      })
+      const labels = Array.from({ length: days }, (_, i) => `${i+1}日`)
+
+      if (chartInstances.trend) chartInstances.trend.destroy()
+      const ctx1 = document.getElementById('trend-chart').getContext('2d')
+      chartInstances.trend = new Chart(ctx1, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: '收入', data: dailyIncome, borderColor: '#22c55e', tension: .3, fill: false },
+            { label: '支出', data: dailyExpense, borderColor: '#ef4444', tension: .3, fill: false },
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'top' } },
+          scales: { y: { beginAtZero: true } } }
+      })
+
+      const catData = getCategorySummary(month)
+      const colors = ['#6366f1','#22c55e','#f59e0b','#ef4444','#06b6d4','#ec4899','#8b5cf6','#14b8a6','#f97316','#6b7280']
+      if (chartInstances.pie) chartInstances.pie.destroy()
+      const ctx2 = document.getElementById('pie-chart').getContext('2d')
+      chartInstances.pie = new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+          labels: catData.map(d => d[0]),
+          datasets: [{ data: catData.map(d => d[1]), backgroundColor: colors.slice(0, catData.length) }]
+        },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'right', labels: { boxWidth: 12, padding: 8 } } } }
+      })
+    }
+
+    function renderBudgetTab() {
+      const month = $('budget-month').value
+      const budgetStatus = getBudgetStatus(month)
+      const container = $('budget-progress')
+      if (!budgetStatus) {
+        container.innerHTML = '<div class="empty"><p>请在下方设置各分类预算</p></div>'
+        return
+      }
+      const totalRatio = budgetStatus.totalBudget > 0 ? budgetStatus.totalSpent / budgetStatus.totalBudget : 0
+      const totalColor = totalRatio > 1 ? '#ef4444' : totalRatio > 0.8 ? '#f59e0b' : '#22c55e'
+      container.innerHTML = `
+        <div class="stat-row" style="font-weight:600">
+          <span class="stat-label">总计</span>
+          <span>¥${budgetStatus.totalSpent.toFixed(0)} / ¥${budgetStatus.totalBudget.toFixed(0)}</span>
+        </div>
+        <div class="stat-bar"><div class="stat-bar-fill" style="width:${Math.min(totalRatio,1)*100}%;background:${totalColor}"></div></div>
+        <div style="margin-top:12px"></div>
+        ${Object.entries(budgetStatus.categories).map(([cat, v]) => {
+          const color = v.ratio > 1 ? '#ef4444' : v.ratio > 0.8 ? '#f59e0b' : '#6366f1'
+          return `
+            <div class="stat-row">
+              <span class="stat-label">${cat}</span>
+              <span>¥${v.spent.toFixed(0)} / ¥${v.limit.toFixed(0)}</span>
+            </div>
+            <div class="stat-bar"><div class="stat-bar-fill" style="width:${Math.min(v.ratio,1)*100}%;background:${color}"></div></div>`
+        }).join('')}`
+    }
+
+    function renderBudgetForm() {
+      const budget = getBudget() || {}
+      const container = $('budget-form')
+      container.innerHTML = CATEGORIES.expense.map(cat => `
+        <div class="form-group" style="margin-bottom:8px">
+          <label style="font-size:12px">${cat}</label>
+          <input type="number" class="budget-input" data-cat="${cat}" value="${budget[cat] || ''}" placeholder="预算金额 (元)" step="100" style="padding:8px 10px;font-size:13px">
+        </div>
+      `).join('')
+      const income = getMonthlyIncome()
+      if (income) {
+        $('income-input').value = income
+        $('income-status').textContent = `✅ 月收入 ¥${income.toFixed(0)}`
+      }
+    }
+
+    function openAddModal() {
+      editingId = null
+      $('modal-title').textContent = '记一笔'
+      $('edit-id').value = ''
+      $('tx-type').value = 'expense'
+      $('tx-amount').value = ''
+      $('tx-date').value = new Date().toISOString().split('T')[0]
+      $('tx-note').value = ''
+      $('delete-modal-btn').style.display = 'none'
+      updateCategoryOptions('expense')
+      $('auto-category-hint').textContent = ''
+      $('tx-modal').classList.add('show')
+    }
+
+    function openEditModal(id) {
+      const txs = getTransactions()
+      const tx = txs.find(t => t.id === id)
+      if (!tx) return
+      editingId = id
+      $('modal-title').textContent = '编辑账单'
+      $('edit-id').value = id
+      $('tx-type').value = tx.type
+      $('tx-amount').value = tx.amount
+      $('tx-date').value = tx.date
+      $('tx-note').value = tx.note || ''
+      $('delete-modal-btn').style.display = ''
+      updateCategoryOptions(tx.type, tx.category)
+      $('auto-category-hint').textContent = ''
+      $('tx-modal').classList.add('show')
+    }
+
+    function updateCategoryOptions(type, selected) {
+      const cats = CATEGORIES[type] || []
+      const select = $('tx-category')
+      select.innerHTML = cats.map(c => `<option value="${c}"${c === selected ? ' selected' : ''}>${c}</option>`).join('')
+    }
+
+    function saveTx() {
+      const id = Number($('edit-id').value)
+      const type = $('tx-type').value
+      const amount = parseFloat($('tx-amount').value)
+      const category = $('tx-category').value
+      const date = $('tx-date').value
+      const note = $('tx-note').value.trim()
+      if (!amount || amount <= 0) { alert('请输入有效金额'); return }
+      if (!date) { alert('请选择日期'); return }
+      if (id) updateTransaction(id, { type, amount, category, date, note })
+      else addTransaction({ type, amount, category, date, note })
+      $('tx-modal').classList.remove('show')
+      renderOverview(); renderList(); renderCharts(); renderBudgetTab()
+    }
+
+    function deleteTx() {
+      const id = Number($('edit-id').value)
+      if (!id || !confirm('确定删除？')) return
+      deleteTransaction(id)
+      $('tx-modal').classList.remove('show')
+      renderOverview(); renderList(); renderCharts(); renderBudgetTab()
+    }
+
+    // Events
+    $('tx-note').addEventListener('input', function() {
+      const note = this.value.trim()
+      if (note) {
+        const guessed = guessCategory(note)
+        if (CATEGORIES.expense.includes(guessed)) {
+          $('tx-category').value = guessed
+          $('auto-category-hint').textContent = `🤖 AI 识别为「${guessed}」`
+        }
+      } else { $('auto-category-hint').textContent = '' }
+    })
+    $('tx-type').addEventListener('change', function() { updateCategoryOptions(this.value) })
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
+        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none')
+        this.classList.add('active')
+        const target = $('tab-' + this.dataset.tab)
+        if (target) target.style.display = ''
+        if (this.dataset.tab === 'charts') renderCharts()
+        if (this.dataset.tab === 'budget') { renderBudgetTab(); renderBudgetForm() }
+      })
+    })
+
+    $('add-btn').addEventListener('click', openAddModal)
+    $('save-btn').addEventListener('click', saveTx)
+    $('cancel-btn').addEventListener('click', () => $('tx-modal').classList.remove('show'))
+    $('delete-modal-btn').addEventListener('click', deleteTx)
+    $('clear-btn').addEventListener('click', function() {
+      const month = $('list-month').value
+      if (!confirm(`确定清空 ${month} 的所有数据？`)) return
+      const remaining = getTransactions().filter(t => !t.date.startsWith(month))
+      saveTransactions(remaining)
+      renderOverview(); renderList(); renderCharts(); renderBudgetTab()
+    })
+
+    // Budget
+    $('save-budget-btn').addEventListener('click', () => {
+      const budget = {}
+      document.querySelectorAll('.budget-input').forEach(input => {
+        const val = parseFloat(input.value)
+        if (val > 0) budget[input.dataset.cat] = val
+      })
+      saveBudget(budget)
+      renderBudgetTab(); renderOverview()
+      alert('预算已保存 ✅')
+    })
+    $('save-income-btn').addEventListener('click', () => {
+      const val = parseFloat($('income-input').value)
+      if (val > 0) {
+        saveMonthlyIncome(val)
+        $('income-status').textContent = `✅ 月收入 ¥${val.toFixed(0)}`
+        renderOverview()
+        alert('月收入已保存 ✅')
+      }
+    })
+
+    // Month filter events
+    ;['ov-month', 'list-month', 'chart-month', 'budget-month'].forEach(id => {
+      $(id).addEventListener('change', function() {
+        if (id === 'ov-month') renderOverview()
+        if (id === 'list-month') renderList()
+        if (id === 'chart-month') renderCharts()
+        if (id === 'budget-month') renderBudgetTab()
+      })
+    })
+    $('list-type').addEventListener('change', renderList)
+    $('list-search').addEventListener('input', renderList)
+
+    // Export/Import
+    $('export-json-btn').addEventListener('click', () => {
+      const data = JSON.stringify(getTransactions(), null, 2)
+      const blob = new Blob([data], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = `bookkeeping_${getCurrentMonth()}.json`; a.click()
+      URL.revokeObjectURL(url)
+    })
+    $('export-csv-btn').addEventListener('click', () => {
+      const txs = getTransactions()
+      const rows = [['类型','金额','分类','日期','备注']]
+      txs.forEach(t => rows.push([t.type, t.amount, t.category, t.date, t.note]))
+      const csv = rows.map(r => r.join(',')).join('\n')
+      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = `bookkeeping_${getCurrentMonth()}.csv`; a.click()
+      URL.revokeObjectURL(url)
+    })
+    $('import-btn').addEventListener('click', () => {
+      const file = $('import-file').files[0]
+      if (!file) return alert('请选择文件')
+      const reader = new FileReader()
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result)
+          if (Array.isArray(data)) {
+            saveTransactions(data)
+            renderOverview(); renderList(); renderCharts(); renderBudgetTab()
+            alert(`导入成功！共 ${data.length} 条记录`)
+          }
+        } catch { alert('文件格式错误，请选择 JSON 文件') }
+      }
+      reader.readAsText(file)
+    })
+
+    // Init
+    ;['ov-month', 'list-month', 'chart-month', 'budget-month'].forEach(id => $(id).value = getCurrentMonth())
+    renderOverview()
+    renderList()
+  </script>
+</body>
+</html>
