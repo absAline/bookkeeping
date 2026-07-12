@@ -83,7 +83,7 @@ export function getMonthComparison(month) {
   return cur.map(([cat, amt]) => [cat, amt, prevMap[cat] || 0])
 }
 
-export function generateAISuggestions(month) {
+export function generateSuggestions(month) {
   const txs = getTransactions().filter(t => t.date.startsWith(month) && t.type === 'expense')
   if (txs.length < 3) return ['添加至少 3 笔支出后自动分析']
 
@@ -92,7 +92,6 @@ export function generateAISuggestions(month) {
   txs.forEach(t => { cats[t.category] = (cats[t.category] || 0) + t.amount })
   const sorted = Object.entries(cats).sort((a, b) => b[1] - a[1])
   const top = sorted[0]
-  const dailyAvg = total / new Date(month + '-01').getMonth()
   const daysInMonth = new Date(parseInt(month), parseInt(month.split('-')[1]), 0).getDate()
   const avgPerDay = total / daysInMonth
 

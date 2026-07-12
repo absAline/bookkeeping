@@ -7,13 +7,17 @@ import '../styles/global.css'
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>💰 智能记账系统 - AI 辅助个人财务管理</title>
-  <meta name="description" content="AI 智能记账系统，自动分类账单、生成收支报告、给出储蓄建议。记录每一笔，看懂你的钱。">
+  <title>💰 智能记账系统 - 个人财务管理工具</title>
+  <meta name="description" content="本地记账工具，自动分类账单、生成收支报告、分析消费习惯。记录每一笔，看懂你的钱。">
   <meta property="og:title" content="智能记账系统">
-  <meta property="og:description" content="AI 自动分类 + 收支图表 + 储蓄建议，你的个人财务助手">
+  <meta property="og:description" content="收支图表 + 分类统计 + 预算管理，你的个人财务助手">
   <meta property="og:type" content="website">
-  <meta name="keywords" content="记账, 财务管理, AI记账, 个人理财, 收支分析">
+  <meta name="keywords" content="记账, 财务管理, 个人理财, 收支分析, 预算管理">
   <link rel="canonical" href="https://bookkeeping-absaline.vercel.app/">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="记账本">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -52,7 +56,7 @@ import '../styles/global.css'
       </div>
 
       <div class="ai-box" id="ai-suggestion">
-        <h3>🤖 AI 分析建议</h3>
+        <h3>📊 消费分析</h3>
         <div id="ai-text-list"></div>
       </div>
     </div>
@@ -163,7 +167,7 @@ import '../styles/global.css'
       getTransactions, addTransaction, updateTransaction, deleteTransaction,
       getSummary, getCategorySummary, CATEGORIES, guessCategory,
       saveTransactions, getBudget, saveBudget, getMonthlyIncome,
-      saveMonthlyIncome, getBudgetStatus, getMonthComparison, generateAISuggestions
+      saveMonthlyIncome, getBudgetStatus, getMonthComparison, generateSuggestions
     } from './utils/store.js'
 
     let chartInstances = {}
@@ -227,7 +231,7 @@ import '../styles/global.css'
 
     function renderAISuggestions(month) {
       const container = $('ai-text-list')
-      const suggestions = generateAISuggestions(month)
+      const suggestions = generateSuggestions(month)
       container.innerHTML = suggestions.map(s => `<p style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin-bottom:4px">• ${s}</p>`).join('')
     }
 
@@ -422,7 +426,7 @@ import '../styles/global.css'
         const guessed = guessCategory(note)
         if (CATEGORIES.expense.includes(guessed)) {
           $('tx-category').value = guessed
-          $('auto-category-hint').textContent = `🤖 AI 识别为「${guessed}」`
+          $('auto-category-hint').textContent = `自动识别为「${guessed}」`
         }
       } else { $('auto-category-hint').textContent = '' }
     })
